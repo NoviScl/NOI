@@ -665,6 +665,252 @@ $1 \leq n \leq 100,  1 \leq w_i, v_i \leq 100,  1 \leq W \leq 10^4$
 
 
 
+Let dp(i, j) denote the max value the bag can have using only the first $i$ items and with capacity j. 
+
+For each item, we either take or do not take (if capcacity ). So we can just choose the max from those two options.
+
+Top-down: recursion with memoisation
+
+```cpp
+const int MAX_N = 102;
+const int MAX_W = 10002;
+
+int dp[MAX_N][MAX_W];
+
+int rec(int i, int j){
+	if(dp[i][j]>=0){
+		return dp[i][j];
+	}
+
+	int res;
+	// end case
+	if(i==0){
+		res = 0;
+	}
+	// can't take w[i]
+	else if(j < w[i]){
+		res = rec(i-1, j);
+	}
+	// j>=w[i]
+	else{
+		res = max(rec(i-1, j), rec(i-1, j-w[i])+v[i]);
+	}
+
+	return dp[i][j]=res;
+}
+
+void solve(){
+	memset(dp, -1, sizeof(dp));
+	printf("%d\n", rec(N, W));
+}
+```
+
+
+
+In the bottom-up approach, we fill up the dp table in order.
+
+(Note: sometimes I start from index 1 when inputing data.)
+
+```cpp
+int dp[MAX_N][MAX_W];
+
+void solve(){
+  	// no item or no capacity: 0
+	memset(dp, 0, sizeof(dp));
+
+	for(int i=1; i<=N; i++){
+		for(int j=1; j<=W; j++){
+			if(j < W[i]){
+				dp[i][j] = dp[i-1][j];
+			}
+			else{
+				dp[i][j] = max(dp[i-1][j], dp[i-1][j-w[i]]+v[i]);
+			}
+		}
+	}
+}
+```
+
+Complexity: O($nW$)
+
+We can see the that the most important part of DP is to identify the subproblem states and update equations.
+
+In this problem, the subproblem state is the range of items available and the capacity. The update equations can then be deduced easily.
+
+We can save some space by using a rolling array. 
+
+```cpp
+int dp[MAX+W + 1];
+
+void solve(){
+	for(int i=1; i<=n; i++){
+		for(int j=W; j>=w[i]; j--){
+			dp[j] = max(dp[j], dp[j-w[i]]+v[i]);
+		}
+	}
+	printf("%d\n", dp[W]);
+}
+```
+
+Note that we need to go from right to left in the inner loop in order to use the values from previous $i$.
+
+
+
+
+
+**<u>E.g.2  Longest Common Subsequence (LCS)</u>**
+
+Find the length of the longest common subsequence of two string. For example, the LCS of 'abcd' and 'becd' is 'bcd'.
+
+String length: $1 \leq n,m \leq 1000$
+
+Let dp(i, j) denote the length of LCS of substrings $s_1…s_i$ and $t_1…t_j$. 
+
+If $s_i=t_j$: dp(i, j) = max(dp(i-1, j-1)+1, dp(i-1, j),  dp(i,  j-1))
+
+Else: dp(i, j) = max(dp(i-1,  j),  dp(i,  j-1))
+
+```cpp
+int n, m;
+char s[MAX_N], t[MAX_M];
+
+int dp[MAX_N+1][MAX_M+1];
+
+void solve(){
+	memset(dp, 0, sizeof(dp));
+	for(int i=1; i<=n; i++){
+		cin>>s[i];
+	}
+	for(int i=1; i<=m; i++){
+		cin>>t[i];
+	}
+
+	for(int i=1; i<=MAX_N; i++){
+		for(int j=1; j<=MAX_M; j++){
+			dp[i][j] = max(dp[i-1][j], dp[i][j-1]);
+			if(s[i]==t[j]){
+				dp[i][j] = max(dp[i][j], dp[i-1][j], dp[i][j-1]);
+			}
+		}
+	}
+
+	cout<<dp[n][m];
+}
+```
+
+
+
+
+
+**<u>E.g.3  Unbounded Knapsack</u>**
+
+You have $n$ types of items each with weight $w_i$ and value $v_i$. Your bag has max wieght capacity $W$. Find the max value of items that can be put in the bag. Note that you can take unlimited number of copies of each type of item.
+
+$1 \leq n \leq 100,  1 \leq w_i, v_i \leq 100,  1 \leq W \leq 10^4$
+
+
+
+In this case, we need to add another inner loop to find the best number of copies to take within the capacity. 
+
+```cpp
+int dp[MAX_N + 1][MAX_W + 1];
+
+void solve(){
+	memset(dp, 0, sizeof(dp));
+
+	for(int i=1; i<=n; i++){
+		for(int j=1; j<=W; j++){
+			for(int k=0; k*w[i]<=j; k++){
+				dp[i][j] = max(dp[i][j], dp[i-1][j - k*w[i]] + k*v[i]);
+			}
+		}
+	}
+	printf("%d\n", dp[n][W]);
+}
+```
+
+
+
+Complexity: O($nW^2$)
+
+We can further improve this algorithm. Note that choosing $k$ in $dp[i][j]$ is the same as choosing $(k-1)$ in $dp[i][j-w[i]]$ (take one copy of $i$th item). Hence we can use this to reduce repeated calculation.
+
+$dp[i][j]$
+
+$=\max \{dp[i-1][j-k*w[i]]+k*v[i] | k\geq 0 \}$
+
+$=\max(dp[i][j], \max \{dp[i-1][j-k*w[i]]+k*v[i] | k \geq 1\})$  (either not take or take at least one)
+
+$=\max(dp[i][j], \max \{dp[i-1][(j-w[i]) - k*w[i]]+k*v[i] | k \geq 0 \})$  (take out one from $k$)
+
+$=\max(dp[i][j], dp[i][j-w[i]]+v[i] )$
+
+(This can come from observation and intuition as well.)
+
+
+
+```cpp
+void solve(){
+	memset(dp, 0, sizeof(dp));
+
+	for(int i=1; i<=n; i++){
+		for(int j=1; j<=W; j++){
+			if(j<w[i]){
+				dp[i][j] = dp[i-1][j];
+			}
+			else{
+				dp[i][j] = max(dp[i-1][j], dp[i][j-w[i]]+v[i]);
+			}
+		}
+	}
+	printf("%d\n", dp[n][W]);
+}
+```
+
+
+
+This can also be improved by using a rolling array.
+
+```cpp
+int dp[MAX_W + 1];
+
+void solve(){
+	memset(dp, 0, sizeof(dp));
+
+	for(int i=1; i<=n; i++){
+		for(int j=w[i]; j<=W; j++){
+			dp[j] = max(dp[j], dp[j-w[i]]+v[i]);
+		}
+	}
+
+	printf("%d\n", dp[W]);
+}
+```
+
+Note that in the inner loop we go from left to right to use the computed values at this $i$ iteration.
+
+
+
+**<u>E.g.4  0-1 Knapsack 2</u>**
+
+You have $n$ items each with weight $w_i$ and value $v_i$. Your bag has max wieght capacity $W$. Find the max value of items that can be put in the bag.
+
+$1 \leq n \leq 100,  1 \leq w_i \leq 10^7,  1 \leq v_i \leq 100, 1 \leq W \leq 10^9$
+
+
+
+The difference of this problem with the first 0-1 knapsack is that the range for $w_i$ and $W$ become much larger and O($nW$) will get TLE.
+
+
+
+
+
+
+
+
+
+
+
 
 
 
