@@ -547,13 +547,15 @@ Rigorous proofs of the correctness of the algorithm are possible but will not be
 
 **<u>E.g.2  Smallest String  (POJ 3617)</u>**
 
-Given a string $S$ with length $N$ (all characters are uppercase), and an empty string $T$. Everytime you can either remove the first or last character from $S$ and append to the end of $T$. Construct the $T$ with the minimum alphabetic order. 
+Given a string $S$ with length $N$ (all characters are uppercase), and an empty string $T$. Every time you can either remove the first or last character from $S$ and append to the end of $T$. Construct the $T$ with the minimum alphabetic order. 
 
 $1 \leq N \leq 2000$
 
 
 
 Intuition: everytime choose the smaller character from the first and last character of $S$ . If they are the same, compare the next character, do so until there is a difference (if all equal then doesn't matter).
+
+(Consider a simple example: zabz).
 
 ```cpp
 const int MAX_N = 2002;
@@ -739,9 +741,10 @@ In this problem, the subproblem state is the range of items available and the ca
 We can save some space by using a rolling array. 
 
 ```cpp
-int dp[MAX+W + 1];
+int dp[MAX_W + 1];
 
 void solve(){
+  	memset(dp, 0, sizeof(dp));
 	for(int i=1; i<=n; i++){
 		for(int j=W; j>=w[i]; j--){
 			dp[j] = max(dp[j], dp[j-w[i]]+v[i]);
@@ -991,7 +994,7 @@ $dp[i][j]=$
 
 $m_i$,   if $dp[i-1][j] \geq 0$
 
-$-1$,   if $j < a_i$ or $dp[i][j-a_i] \leq 0$
+$-1$,   if $j < a_i$ or $dp[i][j-a_i] \leq 0$ (can't take at least one $a_i$)
 
 $dp[i][j-a_i]-1$,  other cases ($dp[i][j-a_i] \geq 1$)
 
@@ -1117,7 +1120,7 @@ A naive thought would be to take out $k$ from $j$ first and split the rest $(j-k
 
 $dp[i][j]= \sum_{k=0}^j dp[i-1][j-k] $
 
-However, this is wrong because it counted repeatedly. For example, it woll count $1+1+2$ and $1+2+1$ as two different ways.
+However, this is wrong because it counted repeatedly. For example, it will count $1+1+2$ and $1+2+1$ as two different ways.
 
 Consider the $m$ splitting number of $n$, $a_i$ ($\sum_{i=1}^m a_i = n$). If for every $i$, $a_i > 0$, then {$a_i -1$} denotes the $m$ splitting of $(n-m)$ (subtracting 1 from each of the $m$ group). If there is $a_i=0$, then it denotes the ($m-1$) (at least one group is gone) splitting of $n$.
 
@@ -1201,6 +1204,86 @@ void solve(){
 	cout<<dp[n][m];
 }
 ```
+
+Complexity: O(nm)
+
+
+
+
+
+
+
+## 5.  Data Structure
+
+#### 5.1  Heap (Priority Queue) 
+
+With heap, you can insert and get the smallest element within O($\log n$) time.
+
+Heap is a complete binary tree where the parent nodes' values are always smaller than or equal to the child nodes' value. (The other way round for big root heap.)
+
+Example:
+
+```cpp
+#include <queue>
+#include <vector>
+#include <iostream>
+using namespace std;
+
+struct cmp{
+    bool operator()(int a, int b){
+        return a > b;
+    }
+};
+
+int main(){
+    priority_queue<int> pque;
+    
+    pque.push(3);
+    pque.push(5);
+    pque.push(1);
+    
+    while(!pque.empty()){
+        cout<<pque.top()<<endl; // 5 3 1
+        pque.pop();
+    }
+    
+    priority_queue<int, vector<int>, greater<int>> que;
+    
+    que.push(3);
+    que.push(5);
+    que.push(1);
+    
+    while(!que.empty()){
+        cout<<que.top()<<endl; // 1 3 5
+        que.pop();
+    }
+    
+    priority_queue<int, vector<int>, cmp> Q;
+    
+    Q.push(3);
+    Q.push(5);
+    Q.push(1);
+    
+    while(!Q.empty()){
+        cout<<Q.top()<<endl; // 1 3 5
+        Q.pop();
+    }
+    
+}
+
+```
+
+By default, STL priority queue is a big root heap. 
+
+You can reload the < operator or define your own compare function to specify the comparison rules (be careful with the greater and smaller sign).
+
+
+
+**<u>E.g.1 Expedition (POJ 2431)</u>**
+
+
+
+
 
 
 
