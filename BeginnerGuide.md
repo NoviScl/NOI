@@ -1691,9 +1691,61 @@ int main(){
 
 
 
+## 6. Graph
+
+#### 6.1 Representation and Search
+
+![dag](/Users/sichenglei/Desktop/RVNOI/dag.png)
+
+A graph consists of vertices/nodes and edges. A graph can be wither directed or undirected (without directions). Directed graphs that do not contain cycles are called DAG (Directed Acyclic Graph). 
+
+Graphs can be represented by adjacent matrix or adjacent list. In an adjacent matrix, each number represents whether two nodes are connected or the distantce between two nodes.
+
+In an adjacent list, each list stores all nodes (sometimes together with the distance) connected to one particular node.
+
+
+
+**<u>E.g.1 Bipartite Graph</u>**
+
+Given a graph with $n$ nodes. Colour each node of the graph so that adjacent nodes have differnet colours. Decide if it is possible to only use two different colours to do so. Given that there is no repeated edges or self-cycles. (Such graphs are called bipartite graphs.)
+
+$1 \leq n \leq 10^3$
+
+
+
+Since only two different colours are allowed, once we know the colour of one node, we should know the colour of all the adjacent nodes of this node. Hence we just need to iterate through all nodes with DFS and complete the colouring.
+
+```cpp
+vector<int> G[MAX_V];
+int V;
+int color[MAX_V]; // 1 or -1
+
+bool dfs(int v, int c){
+	color[v] = c;
+	for(int i=0; i<G[v].size(); i++){
+		if(color[G[v][i]]==c) return false;
+		if(color[G[V][i]]==0 && !dfs(G[v][i], -c)) return false; 
+	}
+	return true;
+}
+
+void solve(){
+	for(int i=0; i<V; i++){
+		if(color[i]==0){
+			if(!dfs(i, 1)){
+				printf("No\n");
+				return;
+			}
+		}
+	}
+	printf("Yes\n");
+}
+```
 
 
 
 
+
+#### 6.2 Shortest Path 
 
 
