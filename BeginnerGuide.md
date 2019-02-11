@@ -646,7 +646,43 @@ void solve(){
 }
 ```
 
-This can be further improved with priority queue (every time pop two front, push their sum).
+Complexity O($n^2$). This can be further improved with priority queue (every time pop two front, push their sum).
+
+```cpp
+typedef long long ll;
+
+int N, L[MAX_N];
+
+void solve(){
+	ll ans = 0;
+
+	// small root heap
+	priority_queue<int, vector<int>, greater<int> > que; 
+
+	for(int i=0; i<N; i++){
+		que.push(L[i]);
+	}
+
+	while(que.size() > 1){
+		int l1, l2;
+		l1 = que.top();
+		que.pop();
+		l2 = que.top();
+		que.pop();
+
+		ans += l1+l2;
+		que.push(l1+l2);
+	}
+
+	printf("%lld\n", ans);
+}
+```
+
+Complexity: O($N \log N$)
+
+
+
+
 
 
 
@@ -1281,9 +1317,373 @@ You can reload the < operator or define your own compare function to specify the
 
 **<u>E.g.1 Expedition (POJ 2431)</u>**
 
+You need to drive a car for a distance of L. Initially there are P units of petrol in the car. Travelling a unit distance takes i unit of petrol. The car can't move if there's no petrol left. There are N gas stations on the way, the $i$th station is $A_i$ unit distance away from the starting point, can provide maximum of $B_i$ unit of petrol. Suppose the car can carry infinite amount of petrol, determine if the car can reach the end point. If so, output the minimum number of times needed to add petrol, else output -1.
+
+$1 \leq N \leq 10^4, 1 \leq L \leq 10^6, 1 \leq P \leq 10^6, 1\leq A_i < L, 1 \leq B_i \leq 100$
 
 
 
+Adding the same amount of petrol sooner or later does not affect the final outcome. Therefore, we can consider passing through a gas station as adding this gas station as a possible option in the queue that can later be chosen. We only add petrol when there is no petrol left to move forward to the next gas station. Every time, we add petrol from the gas station with the maximum petrol from the queue.
+
+```cpp
+const int MAXN = 10005;
+int L, P, N;
+int A[MAX_N], B[MAX_N]; 
+//A: gas station pos
+//B: petrol amount
+
+void solve(){
+	// add end point as a gas station
+	A[N] = L;
+	B[N] = 0;
+	N++;
+
+	priority_queue<int> que;
+	int ans=0, pos=0, tank=P;
+
+	for(int i=0; i<N; i++){
+		int d = A[i] - pos; //dist to go
+
+		// keep adding gas until enough to reach next
+		while(tank - d < 0){
+			if(que.empty()){
+				puts("-1");
+				return;
+			}
+
+			tank += que.top();
+			que.pop();
+			ans++;
+		}
+
+		tank -= d;
+		pos = A[i];
+		que.push(B[i]);
+	}
+
+	printf("%d\n", ans);
+}
+```
+
+
+
+
+
+#### 5.2 Binary Search Tree
+
+Example implementation of BST :
+
+```cpp
+struct node{
+	int val;
+	node *lch, *rch;
+};
+
+node *insert(node *p, int x){
+	// p: parent node
+	if(p == NULL){
+		node *q = new node;
+		q->val = x;
+		q->lch = q->rch = NULL;
+		return q;
+	}
+	else{
+		if(x < p->val) p->lch = insert(p->lch, x);
+		else p->rch = insert(p->rch, x);
+		return p;
+	}
+}
+
+bool find(node *p, int x){
+	if(p==NULL) return false;
+	else if(x==p->val) return true;
+	else if(x < p->val) return find(p->lch, x);
+	else return find(p->rch, x);
+}
+
+node* remove(node *p, int x){
+	if(p==NULL) return NULL;
+	else if(x < p->val) p->lch = remove(p->lch, x);
+	else if(x > p->val) p->rch = remove(p->rch, x);
+	// remove current node
+	else if(p->lch == NULL){
+		node *q = p->rch;
+		delete p;
+		return q;
+	}
+	else if(p->lch->rch == NULL){
+		node *q = p->lch;
+		q->rch = p->rch;
+		delete p;
+		return q;
+	}
+	else{
+		node *q;
+		for(q=p->lch; q->rch->rch!=NULL; q=q->rch);
+		node *r = q->rch; //predecessor
+		q->rch = r->lch;
+		r->lch = p->lch;
+		r->rch = p->rch;
+		delete p;
+		return r;
+	}
+}
+```
+
+
+
+Self-balanced BST is more efficient. Examples are AVL, Red-Black, Splay, SBT, etc. (Will include some of them when I get time.)
+
+We can directly use set or map from STL for balanced BST.
+
+```cpp
+#include <cstdio>
+#include <set>
+using namespace std;
+
+int main(){
+	set<int> s;
+
+	s.insert(1);
+	s.insert(3);
+
+	set<int>::iterator ite;
+
+	ite = s.find(1);
+	if(ite==s.end()) puts("not found");
+	else puts("found");
+
+	s.erase(3);
+
+	if(s.count(3)!=0) puts("found");
+	else puts("found");
+
+	for(ite=s.begin(); ite!=s.end(); ++ite){
+		printf("%d\n", *ite);
+	}
+}
+```
+
+ ```cpp
+#include <cstdio>
+#include <map>
+#include <string>
+using namespace std;
+
+int main(){
+	map<int, const char*> m;
+
+	m.insert(make_pair(1, "ONE"));
+	m.insert(make_pair(10, "TEN"));
+	m[100] = "HUNDRED";
+
+	map<int, const char*>::iterator ite;
+	ite = m.find(1);
+	if(ite==m.end()) puts("not found");
+	else puts(ite->second);
+
+	puts(m[10]);
+
+	m.erase(10);
+
+	for(ite=m.begin(); ite!=m.end(); ++ite){
+		printf("%d: %s\n", ite->first, ite->second);
+	}
+
+	return 0;
+}
+ ```
+
+set and map do not allow yu to store repeated elements, you can do so with multiset and multimap.
+
+
+
+
+
+#### 5.3 Disjoint Set (Union Find)
+
+Disjoint set use tree structures to represent groupings. Initially every node's parent node is itself. If we want to merge two tree, we can just set one root to be the child of the other root. We can compare if two nodes are in the same group by comparing if they have the same root node. Two common tricks that can speed up the operations are path compression: connect nodes directly to the root node instead of passing through a lot of intermediate parent nodes; and merge by rank: set the shorted tree as the child of the higher tree when merging.
+
+(From my own experience, disjoint set with path compression is usually fast enough.)
+
+```cpp
+int par[MAX_N]; //parent
+int rank[MAX_N]; //height
+
+void init(int n){
+	for(int i=0; i<n; i++){
+		par[i] = i;
+		rank[i] = 0;
+	}
+}
+
+int find(int x){
+	if(par[x]==x)
+		return x;
+	return par[x] = find(par[x]); //path compression
+}
+
+// merge
+void unite(int x, int y){
+	x = find(x);
+	y = find(y);
+	if(x==y) return;
+
+	//merge by rank
+	if(rank[x]<rank[y]){
+		par[x] = y;
+	}
+	else{
+		par[y] = x;
+		if(rank[x]==rank[y]) rank[x]++;
+	}
+}
+
+bool same(int x, int y){
+	return find(x)==find(y);
+}
+```
+
+
+
+**<u>E.g.1 Food Chain (POJ 1182)</u>**
+
+There are N animals, indexed 1, 2, …, N. Each animal belongs to one of A, B, C group. A eats B, B eats C, C eats A. Input K messages of two types: 1) x and y belong to the same group. 2) x eats y.
+
+However, some messages may be wrong. For example, they provide indices that are out of range or messages in conflict with previous messages. Output the number of wrong messages.
+
+$1 \leq N \leq 5*10^4, 0 \leq K \leq 10^5$
+
+
+
+For each animal $i$, we create 3 elements: $i-A, i-B, i-C$ and construct disjoint set with these $3\times N$ elements. $i-x$ means animal $i$ belongs to group $x$. Each group in the disjoint set means that all elements in the group either all happen or all not happen.
+
+For each message, we add all possibilities. I.e: 
+
+If x and y same group: merge $x-A \& y-A, x-B\& y-B, x-C\& y-C$ .
+
+If x eats y: merge $x-A \& y-B, x-B\& y-C, x-C\& y-A$ .
+
+```cpp
+int N, K;
+int T[MAX_K], X[MAX_K], Y[MAX_K];
+//T: message type
+
+//disjoint set implementation omitted here
+void solve(){
+	init(N*3);
+
+	int ans=0;
+	for(int i=0; i<K; i++){
+		int t = T[i];
+		int x = X[i]-1, y= Y[i]-1;
+
+		if(x<0 || x>=N || y<0 || y>=N){
+			ans++;
+			continue;
+		}
+
+		if(t==1){ //type1
+			if(same(x, y+N)||same(x, y+2*N)){
+				ans++;
+			}
+			else{
+				unite(x, y);
+				unite(x+N, y+N);
+				unite(x+N*2, y+N*2);
+			}
+		}
+		else{ //type2
+			if(same(x, y)||same(x, y+2*N)){
+				ans++;
+			}
+			else{
+				unite(x, y+N);
+				unite(x+N, y+2*N);
+				unite(x+2*N, y);
+			}
+		}
+	}
+
+	printf("%d\n", ans);
+}
+```
+
+
+
+**<u>E.g.2 Experimental Charges (2019 SG NOI Prelim Q3)</u>**
+
+Particles can have either positive or negative charges. Particles of the same
+charge will repel each other, and particles of different charges will repel each
+other. Given the behaviour of some pairs of charges, determine if 2 charges will
+attract or repel, or cannot be determined from the given information.
+
+
+
+This question is a simpliefied version of the above example. We only need to create two copies of each element $i-pos, i-neg$ to include all possibilities.
+
+AC codes:
+
+```cpp
+#include <iostream>
+#include <cstring>
+#include <vector>
+using namespace std;
+
+const int MAXN = 99999;
+int father[MAXN*2];
+int N, Q;
+
+int find_father(int n){
+    if(father[n]!=n){
+        father[n]=find_father(father[n]);
+    }
+    return father[n];
+}
+
+void join(int a, int b){
+    int f_a = find_father(a);
+    int f_b = find_father(b);
+    if(f_a!=f_b){
+        father[f_a]=f_b;
+    }
+}
+
+int main(){
+    char cmd;
+    int a, b;
+    cin>>N>>Q;
+    for(int i=1; i<=2*N; i++){
+        father[i] = i;
+    }
+    
+    for(int i=0; i<Q; i++){
+        cin>>cmd>>a>>b;
+        if(cmd=='Q'){
+            int f_a = find_father(a);
+            int f_b = find_father(b);
+            int f_aN = find_father(a+N);
+            if(f_a==f_b){
+                cout<<'R'<<endl;
+            }
+            else if(f_aN==f_b){
+                cout<<'A'<<endl;
+            }
+            else{
+                cout<<'?'<<endl;
+            }
+        }
+        else if(cmd=='R'){
+            join(a, b);
+            join(a+N, b+N);
+        }
+        else{
+            join(a, b+N);
+            join(a+N, b);
+        }
+    }
+}
+```
 
 
 
