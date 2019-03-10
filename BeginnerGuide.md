@@ -1742,10 +1742,506 @@ void solve(){
 }
 ```
 
-
+O(|V|+|E|)
 
 
 
 #### 6.2 Shortest Path 
+
+**1. Bellman-Ford**
+
+Suppose the minimum distance from starting point to node $i​$ is $d[i]​$, we have:
+
+$d[i]=\min \{ d[j]+dist(j,i) | e=(j,i) \in E \}$
+
+In other words, we just need to keep checking if passing through an edge can shorten the distance between the two nodes. 
+
+```cpp
+struct edge{ int from, to, dist; };
+edge es[MAX_E];
+
+int d[MAX_V];
+int V, E;
+
+void shortest_path(int s){
+	for(int i=0; i<V; i++) d[i]=INF;
+	d[s] = 0;
+	while(true){
+		bool update = false;
+		for(int i=0; i<E; i++){
+			edge e = es[i];
+			if(d[e.from]!=INF && d[e.to]>d[e.from]+e.dist){
+				d[e.to] = d[e.from] + e.dist;
+				update = true;
+			}
+		}
+		if(!update) break;
+	}
+}
+```
+
+The same vertex will be updated at most once, so the while loop will run at most $|V|-1​$ times. Hence the complexity is O($|V|\times|E|​$). However, this does not hold if there are negative cycles because we can run over the negative cycles forever and keep reducing the distance. We can use this property to check for the existence of negative cycles:
+
+ ```cpp
+bool find_negative_loop(){
+	for(int i=0; i<V; i++) d[i]=INF;
+	d[s] = 0;
+
+	for(int i=0; i<V; i++){
+		for(int j=0; j<E; j++){
+			edge e = es[j];
+			if(d[e.to] > d[e.from] + e.dist){
+				d[e.to] = d[e.from] + e.dist;
+
+				//if the Vth loop still updates
+				if(i==V-1) return true;
+			}
+		}
+	}
+	return false;
+}
+ ```
+
+The algorithm is easy to implement because it does not even require you to store the graph. You just need to store and iterate through the edges.
+
+An improvement is to only take care of edges that have been updated with a queue. Note that now you need to store the graph in an adjacent list. 
+
+```cpp
+int SPFA(int start, int target){
+	queue<int> Q;
+	for(int i=1; i<=n; i++){
+		dis[i] = INF;
+	}
+	dis[start] = 0;
+	memset(vis, false, sizeof(vis));
+	Q.push(start);
+	while(!Q.empty()){
+		int u = Q.front();
+		Q.pop();
+		vis[u] = false; //out of Q
+		if(++count[u]>=n){
+			//count number of times being pushed
+			cout<<"negative cycle!"<<endl;
+			return -1;
+		}
+		for(auto edge: adjlist[u]){
+			int v = edge.v;
+			int w = edge.w;
+			if(dis[v] > dis[u]+w){
+				dis[v] = dis[u] + w;
+				//push if v not in Q yet
+				if(!vis[v]){
+					Q.push(v);
+					vis[v] = true;
+				}
+			}
+		}
+	}
+	return dis[target];
+}
+```
+
+Although there is some improvement, the complexity is still O($|V|\times|E|$).
+
+
+
+**2. Dijkstra**
+
+ Now let's consider cases without negative cycles. In Bellman-Ford, it is a waste of time to update $d[i]$ from $(j,i)$ if $d[j]$ itself is not yet the shortest distance because in that case the updated $d[i]$ still can't be the shortest distance anyway. Also, it is a waste of time to keep checking those points that are already updated to the shortest distance. 
+
+To avoid those cases, every time we choose the closest node from the starting point and save their shortest distance. This is like a greedy strategy.
+
+```cpp
+int map[MAX_V][MAX_V], dist[MAX_V],  visited[MAX_V];
+
+void dijkstra(){
+	memset(dist, 0x3f, sizeof(dist));
+	memset(visited, 0, sizeof(visited));
+	int min_dist, min_vertex;
+
+	dist[start] = 0;
+	for(int i=0; i<V; i++){
+		min_dist = INF;
+		for(int j=0; j<V; j++){
+			if(dist[j]<min_dist && !visited[j]){
+				min_dist = dist[j];
+				min_vertex = j;
+			}
+		}
+
+		visited[min_vertex] = 1;
+
+		for(int k=0; k<V; k++){
+			if(map[min_vertex][k] < INF){
+				dist[k] = min(dist[k], min_dist+map[min_vertex][k]);
+			}
+		}
+	}
+}
+```
+
+Complexity is: O($V^2$).
+
+Iterating through all nodes to find the closest vertex takes O($V$). To improve this, we can use a priority queue.
+
+```cpp
+struct edge{ int to, dist; };
+typedef pair<int, int> P; 
+//first: dist, second: vertex index
+//p_q sorts the first value by default
+int V;
+vector<edge> G[MAX_V];
+int d[MAX_V];
+
+void dijkstra(int s){
+	priority_queue<P, vector<P>, greater<P> > que;
+	fill(d, d+V, INF);
+	d[s] = 0;
+	que.push(P(0, s));
+
+	while(!que.empty()){
+		P p = que.top();
+		que.pop();
+		int v = p.second;
+		if(d[v] <= p.first) continue;
+		for(int i=0; i<G[v].size(); i++){
+			edge e = G[V][i];
+			if(d[e.to] > d[v] + e.dist){
+				d[e.to] = d[v] + e.dist;
+				que.push(P(d[e.to], e.to));
+			}
+		}
+	}
+}
+```
+
+Compared to O($|E||V|$)  of Bellman-Ford, the complexity of Dijkstra is O($|E|\log |V|$). However, note that Dijkstra can't deal with graphs negative edges. 
+
+
+
+##### 3. Floyd-Warshall
+
+Floyd-Warshall is used to calculate the shoartest distance between any pair of two points in a graph.  It is essentially a dynamic programming algorithm.
+
+Suppose $dp[k][i][j]$ represents the shortest distance between node $i$ and $j$ that only passes nodes $0$ ~$k$ on the way. Then $dp[0][i][j]=graph[i][j]$ because it cannot pass any other node than $i,j$ themselves. When passing only nodes  $0$ ~$k$, the shortest path either passes the node $k$ once or does not pass node $k$. If it does not pass node $k$, $dp[k][i][j]=dp[k-1][i][j]$. If it passes node $k$, $dp[k][i][j]=dp[k-1][i][k]+dp[k-1][k][j]$. Hence we get our transition equation: $dp[k][i][j]=min(dp[k-1][i][j], dp[k-1][i][k]+dp[k-1][k][j])$. This could be implemented with a rolling array: $dp[i][j]=min(dp[i][j], dp[i][k]+dp[k][j])$. 
+
+```cpp
+int d[MAX_V][MAX_V];
+int V;
+
+void floyd_warshall(){
+	for(int k=0; k<V; k++){
+		for(int i=0; i<V; i++){
+			for(int j=0; j<V; j++){
+				d[i][j] = min(d[i][j], d[i][k]+d[k][j]);
+			}
+		}
+	}
+}
+```
+
+The complexity is O(|V|$^3$). Like Bellman-Ford, it works on graphs with negative edges and to detect negative cycles we just need to check if any $d[i][i]=0$ after the loops.
+
+
+
+##### 4. Path Reconstruction
+
+To reconstruct the shortest path, we need to store the previous node of every node in the shortest path. We need to update it every time make update the shortest distance of a node. For example, in Dijkstra:
+
+```cpp
+int prev[MAX_V];
+
+void dijkstra(int s){
+	fill(d, d+V, INF);
+	fill(used, used+V, false);
+	fill(prev, prev+V, -1);
+	d[s] = 0;
+
+	while(true){
+		int v = -1;
+		for(int u=0; u<V; u++){
+			if(!used[u] && (v==-1 || d[u]<d[v])) v = u;
+		}
+
+		if(v==-1) break;
+		used[v] = true;
+
+		for(int u=0; u<V; u++){
+			if(d[u] > d[v] + cost[v][u]){
+				d[u] = d[v] + cost[v][u];
+				prev[u] = v;
+			}
+		}
+	}
+}
+
+vector<int> get_path(int t){
+	vector<int> path;
+	for(; t!=-1; t=prev[t]) path.push_back(t);
+	reverse(path.begin(), path.end()); //from s to t
+	return path;
+}
+```
+
+This can be applied on Bellman-Ford and Floyd-Warshall similarly.
+
+
+
+#### 6.3 Minimum Spanning Tree
+
+Given an undirected graph, if it has a subgraph where any two nodes in the subgraph are connected and the subgraph is a tree, then it is called a spanning tree. The one with miminum sum of edge costs is the minimum spanning tree (MST).
+
+
+
+##### 1. Prim
+
+Prim is similar to Dijkstra, where we keep adding new edges that are closest to the current MST, which is like a greedy approach.
+
+ ```cpp
+int cost[MAX_V][MAX_V]; //adj matrix
+int mincost[MAX_V]; //from node to MST
+bool used[MAX_V];
+int V;
+
+int prim(){
+	for(int i=0; i<V; i++){
+		mincost[i] = INF;
+		used[i] = false;
+	}
+	//doesn't matter where to start
+	mincost[0] = 0;
+	int res = 0;
+
+	while(true){
+		int v = -1;
+		for(int u=0; u<V; u++){
+			if(!used[u] && (v==-1 || mincost[u]<mincost[v])) v=u;
+		}
+
+		if(v==-1) break;
+		used[v] = true;
+		res += mincost[v];
+
+		//update dist from MST
+		for(int u=0; u<V; u++){
+			mincost[u] = min(mincost[u], cost[v][u]);
+		}
+	}
+	return res;
+}
+ ```
+
+This takes O(|V|$^2$) but similar to Dijkstra, can be imporved to O(|$E$|log|$V$|) by using a priority queue instead of iterating and choosing the closest point.
+
+
+
+##### 2. Kruskal 
+
+Kruskal is also a greedy approach where we add the shorst edge every time unless it forms cycles. To determine whethere the new edge forms cycles with already added edges, we can use disjoint set.
+
+```cpp
+struct edge{ int u, v, cost; };
+
+bool comp(const edge& e1, const edge& e2){
+	return e1.cost < e2.cost;
+}
+
+edges es[MAX_E];
+int V, E;
+
+int kruskal(){
+	sort(es, es+E, comp);
+	init_union_find(V);
+	int res = 0;
+	for(int i=0; i<E; i++){
+		edge e = es[i];
+		if(!same_father(e.u, e.v)){
+			unite(e.u, e.v);
+			res += e.cost;
+		}
+	}
+	return res;
+}
+```
+
+The implementation of disjont set is omitted here for simplicity. The time complexity is O(|$E$|log|$V$|). 
+
+
+
+##### 3. Applications
+
+**<u>E.g.1 Roadblocks (POJ 3255)</u>**
+
+A district has R roads and N crossings. All roads are bidirectional. Find the second shortest path length from crossing number 1 to number N. The same road can be passed many times.
+
+$1 \leq N \leq 5000, 1 \leq R \leq 10000$
+
+
+
+The second shortest path to some point $v$ is either the shortest path to another point $u$ plus the edge $u \rightarrow v$, or the second shortest path to $u$ plus the edge $u \rightarrow v$. Hence, for every node, we need to store not only the shortest distance, but also the second shortest distance. 
+
+```cpp
+int N, R;
+vector<edge> G[MAX_N];
+
+int dist[MAX_N];
+int dist2[MAX_N];
+
+void solve(){
+	priority_queue<P, vector<P>, greater<P> > que;
+	fill(dist, dist+N, INF);
+	fill(dist2, dist2+N, INF);
+	dist[0] = 0;
+	que.push(P(0, 0));
+
+	while(!que.empty()){
+		P p = que.top();
+		que.pop();
+		int v = p.second, d = p.first;
+		if(d > dist2[v]) continue;
+		for(int i=0; i<G[v].size(); i++){
+			edge &e = G[v][i];
+			int d2 = d + e.cost;
+            //d2 may be shortest or second shortest
+			if(d2 < dist[e.to]){
+				swap(dist[e.to], d2);
+				que.push(P(dist[e.to], e.to));
+			}
+			if(d2 < dist2[e.to] && d2 > dist[e.to]){
+				dist2[e.to] = d2;
+				que.push(P(dist2[e.to], e.to));
+			}
+		}
+	}
+	printf("%d\n", dist2[N-1]);
+}
+```
+
+
+
+**<u>E.g.2 Conscription (POJ 3723)</u>**
+
+We need to conscript N women and M men. Conscripting each person costs $10000. But if they are familiar with the conscripted people, the cost can be lower. Given the closeness (1~9999) of some people (R relationships), the cost of conscripting a new person is 10000 - (max closeness with a person among the conscripted people). Find the order of conscription that makes the total cost of conscription the lowest.
+
+$1 \leq N, M \leq 10000,  0 \leq R \leq 50000, 0 < d < 10000$
+
+[input (x, y, d): closeness between woman x and man y is d]
+
+
+
+First of all, let's think of this undirected graph where the people are nodes and their closeness are edges. The graph cannot contain any cycles otherwise the order will have conflicts (i.e. first person cannot be the last conscripted at the same time). So it will actually be a tree. Since not all people are connected, the trees will form a forest. The problem now becomes to find the maximum edge cost forest, which can be solved by truning all edges costs to negative sign and find miminum spanning trees.
+
+```cpp
+int N, M, R;
+int x[MAX_R], y[MAX_R], d[MAX_R];
+
+void solve(){
+	V = N+M;
+	E = R;
+	for(int i=0; i<R; i++){
+		es[i] = (edge){x[i], N+y[i], -d[i]};
+	}
+	printf("%d\n", 10000*(N+M)+kruskal());
+}
+
+```
+
+
+
+**<u>E.g.3 Layout (POJ 3169)</u>**
+
+FJ has N (2 <= N <= 1,000) cows numbered 1..N standing along a straight line waiting for feed. The cows are standing in the same order as they are numbered, and since they can be rather pushy, it is possible that two or more cows can line up at exactly the same location (that is, if we think of each cow as being located at some coordinate on a number line, then it is possible for two or more cows to share the same coordinate). 
+
+Some cows like each other and want to be within a certain distance of each other in line. Some really dislike each other and want to be separated by at least a certain distance. A list of ML (1 <= ML <= 10,000) constraints describes which cows like each other and the maximum distance by which they may be separated; a subsequent list of MD constraints (1 <= MD <= 10,000) tells which cows dislike each other and the minimum distance by which they must be separated. 
+
+Your job is to compute, if possible, the maximum possible distance between cow 1 and cow N that satisfies the distance constraints.
+
+
+
+**Analysis**: First of all, the cows are ordered so $d[i]\leq d[i+1]​$. For cows like each other, there is maximum distance constraint: $d[BL] \leq d[AL] + DL​$, for cows dislike each other, there is minimum distance constraint: $d[BD] \geq d[AD] + DD​$. The problem is then to find max value of $d[N] - d[1]​$ while satisfying the above constraints. This is a linear programming algorithm and there are solutions like simplex algorithm. But we will use a simpler method here. 
+
+Actually, the shortest path problem can be expressed as a linear programming problem as well. If we denoate the shortest distance from s to v as $d(v)$, then for edge $e=(v,u)$ with cost $w$, we have $d(v)+w \geq d(u)$.  Then, for d satisfying all constraints, the max value of $d(v) - d(s)$ is the shorstest distance from $s$ to $v$. Note that it is the max value not min value (min value can be 0, i.e. shorter than the actual edge costs). 
+
+In this way, each constraint in the original problem can be thought of as an edge in the graph, and then we just need to find the shortest path. $d[i] \leq d[i+1]$ becomes $d[i+1]+0 \geq d[i]$, so an edge from $i+1$ to $i$ with weight $0$; $d[AL]+DL \geq d[BL]$, so an edge from $AL$ to $BL$ weight $DL$; $d[BD]-DD \geq d[AD]$, so an edge from $BD$ to $AD$ with weight $(-DD)$.  To find the max value of $d[N] - d[1]$, we find the shortest distance between node 1 and N. Since there are negative edges in the graph, we use Bellman-Ford instead of Dijkstra.
+
+```cpp
+int N, ML, MD;
+int AL[MAX_ML], BL[MAX_ML], DL[MAX_ML];
+int AD[MAX_MD], BD[MAX_MD], DD[MAX_MD];
+
+int d[MAX_N];
+
+void solve(){
+	fill(d, d+N, INF);
+	d[0] = 0;
+
+	// Bellman-Ford
+	// run N iterations to detect neg cycles
+	for(int k=0; k<N; k++){
+		// i+1 to i: 0
+		for(int i=0; i+1<N; i++){
+			if(d[i+1] < INF) d[i]=min(d[i], d[i+1]);
+		}
+		// AL to BL: DL
+		for(int i=0; i<ML; i++){
+			if(d[AL[i]-1] < INF){
+				d[BL[i]-1] = min(d[BL[i]-1], d[AL[i]-1]+DL[i]);
+			}
+		}
+		// BD to AD: -DD
+		for(int i=0; i<MD; i++){
+			if(d[BD[i]-1] < INF){
+				d[AD[i]-1] = min(d[AD[i]-1], d[BD[i]-1]-DD[i]);
+			}
+		}
+	}
+
+	int res = d[N-1];
+	if(d[0] < 0){
+		// has neg cycles, no solution
+		res = -1;
+	}
+	else if(res==INF){
+		// res can be INF large
+		res = -2;
+	}
+	printf("%d\n", res);
+}
+```
+
+Complexity: O($N(N+ML+MD)$)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
